@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../build/"
+  },
+  "include": ["./", "../renderer/App.ts", "../common/getPath.ts", "../common/constants/getPath.ts"]
+}
