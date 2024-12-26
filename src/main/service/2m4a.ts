@@ -21,16 +21,15 @@ export function getBinPath(executableName: string) {
       );
 }
 
-
-
 // 合并 m4s 文件并删除原文件的函数
 export async function mergeM4sToM4a(fileId: string) {
-    if (!fileId) {
-        return { error: 'fileId 无效', details: '请提供有效的 fileId' };
-      }
+  if (!fileId) {
+    return { error: 'fileId 无效', details: '请提供有效的 fileId' };
+  }
+
   // 获取当前用户的桌面路径并拼接 'test1' 文件夹和 fileId
   const userDesktop = path.join(os.homedir(), 'Desktop', 'test1', fileId);
-  
+
   // 确保目标文件夹存在
   if (!fs.existsSync(userDesktop)) {
     return { error: '文件夹不存在', details: `指定的文件夹 ${userDesktop} 不存在。` };
@@ -56,15 +55,14 @@ export async function mergeM4sToM4a(fileId: string) {
   const outputFileName = `${fileId}.m4a`;
   const outputPath = path.join(userDesktop, outputFileName);
 
-  // 创建一个临时文件来列出所有需要拼接的 .m4s 文件
-  const fileListPath = path.join(userDesktop, 'fileList.txt');
-  const fileListContent = m4sFiles.map(file => `file '${file}'`).join('\n');
-  fs.writeFileSync(fileListPath, fileListContent);
-
   try {
     // 获取 ffmpeg 二进制路径
     const ffmpegPath = getBinPath('ffmpeg');
-    const command = `"${ffmpegPath}" -f concat -safe 0 -i ${fileListPath} -c copy ${outputPath}`;
+
+    // 拼接命令使用 concat 协议
+    const concatFiles = m4sFiles.join('|');  // 使用管道符连接文件路径
+    const command = `"${ffmpegPath}" -i "concat:${concatFiles}" -c:a aac -strict experimental "${outputPath}"`;
+    
     logger.info(`Running ffmpeg command: ${command}`);
 
     // 使用 child_process 执行 ffmpeg 命令
@@ -72,7 +70,7 @@ export async function mergeM4sToM4a(fileId: string) {
       exec(command, (error, stdout, stderr) => {
         if (error) {
           logger.error('ffmpeg error:', error);
-          return reject({ error: '合并失败', details: error.message });
+          return reject({ error: '合并失败', details: error });
         }
         if (stderr) {
           logger.error('ffmpeg stderr:', stderr);
@@ -82,16 +80,13 @@ export async function mergeM4sToM4a(fileId: string) {
       });
     });
 
-    // 删除临时的文件列表
-    fs.unlinkSync(fileListPath);
-
     // 删除原目录下的所有 .m4s 文件
     m4sFiles.forEach(file => {
       try {
-        fs.unlinkSync(file);  // 删除文件
-        logger.info(`Deleted ${file}`);
-      } catch (deleteError) {
-        logger.error(`Failed to delete ${file}: ${deleteError}`);
+        fs.unlinkSync(file); // 删除每个 .m4s 文件
+        logger.info(`Deleted: ${file}`);
+      } catch (error) {
+        logger.error(`Error deleting file: ${file}`, error);
       }
     });
 
